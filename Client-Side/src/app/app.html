@@ -1,0 +1,39 @@
+<div class="control-section">
+  <div class="content-wrapper">
+    <!-- Header Section -->
+    <div class="header-section">
+      <h1>PDF Document Management</h1>
+      <p>Professional document handling with form fields, signature management, and redaction capabilities</p>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+      <h2>Document Operations</h2>
+      <div class="button-group">
+        <button (click)="updateSignatureField()">Fill Signature Field</button>
+        <button id="searchTextRedact" type="button" (click)="markForRedaction()">
+          Mark fields for Redaction (Signature)
+        </button>
+        <button id="applyRedaction" type="button" (click)="applyRedaction()">
+          Apply Redaction
+        </button>
+        <button id="flattenField" type="button" (click)="handleFlattening()">
+          Flatten specific fields (Textbox)
+        </button>
+        <button id="exportField" type="button" (click)="exportObj()">
+          Export form values
+        </button>
+        <button id="importField" type="button" (click)="importFromObject()">
+          Import form values
+        </button>
+      </div>
+    </div>
+
+    <!-- PDF Viewer -->
+    <div class="viewer-container">
+      <ejs-pdfviewer #pdfviewer id="pdfViewer" [documentPath]="document" [toolbarSettings]="toolbarSettings"
+        [resourceUrl]="resource" (formFieldPropertiesChange)="formFieldPropertiesChange($event)"
+        style="height:640px;display:block"></ejs-pdfviewer>
+    </div>
+  </div>
+</div>

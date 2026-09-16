@@ -1,0 +1,247 @@
+@import '../node_modules/@syncfusion/ej2-tailwind3-theme/styles/pdfviewer/index.css';
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.control-section {
+    min-height: 100vh;
+    background: #f8f9fb;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+}
+
+.content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 100%;
+}
+
+/* Header section */
+.header-section {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 24px 40px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-section h1 {
+    color: #0f172a;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header-section p {
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 6px;
+}
+
+/* Controls panel */
+.controls-panel {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 20px 40px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
+}
+
+.controls-panel h2 {
+    display: none;
+}
+
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+button {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button:hover {
+    transform: none;
+    opacity: 0.9;
+}
+
+button:active {
+    opacity: 0.95;
+}
+
+button:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Primary action button - Bright Blue (Fill Signature) */
+button:first-child {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
+
+button:first-child:hover {
+    background: #2563eb;
+}
+
+/* Mark for Redaction - Vibrant Orange */
+#searchTextRedact {
+    background: #f97316;
+    color: white;
+    border-color: #ea580c;
+}
+
+#searchTextRedact:hover {
+    background: #ea580c;
+}
+
+/* Apply Redaction - Deep Purple */
+#applyRedaction {
+    background: #a855f7;
+    color: white;
+    border-color: #9333ea;
+}
+
+#applyRedaction:hover {
+    background: #9333ea;
+}
+
+/* Flatten Specific Fields - Vibrant Teal */
+#flattenField {
+    background: #14b8a6;
+    color: white;
+    border-color: #0d9488;
+}
+
+#flattenField:hover {
+    background: #0d9488;
+}
+
+/* Export Form Values - Green */
+#exportField {
+    background: #059669;
+    color: white;
+    border-color: #047857;
+}
+
+#exportField:hover {
+    background: #047857;
+}
+
+/* Import Form Values - Cyan */
+#importField {
+    background: #0891b2;
+    color: white;
+    border-color: #0e7490;
+}
+
+#importField:hover {
+    background: #0e7490;
+}
+
+/* PDF Viewer container */
+.viewer-container {
+    flex: 1;
+    background: white;
+    margin: 20px 20px 20px 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+ejs-pdfviewer {
+    display: block !important;
+    height: 100%;
+    border-radius: 6px;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+
+    .header-section,
+    .controls-panel {
+        padding: 20px 28px;
+    }
+
+    button {
+        padding: 9px 16px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .header-section,
+    .controls-panel {
+        padding: 16px 20px;
+    }
+
+    .header-section h1 {
+        font-size: 20px;
+    }
+
+    .header-section p {
+        font-size: 12px;
+    }
+
+    .button-group {
+        gap: 8px;
+    }
+
+    button {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .header-section,
+    .controls-panel {
+        padding: 12px 16px;
+    }
+
+    .header-section h1 {
+        font-size: 18px;
+    }
+
+    .button-group {
+        gap: 6px;
+        flex-direction: column;
+    }
+
+    button {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .viewer-container {
+        margin: 12px;
+    }
+}
