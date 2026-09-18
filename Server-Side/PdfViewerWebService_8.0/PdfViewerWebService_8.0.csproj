@@ -22,9 +22,6 @@
     <None Update="runtimes\models\syncfusion_doclayout.onnx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="runtimes\models\syncfusion_form_detection.onnx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="runtimes\models\syncfusion_table_classification.onnx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
