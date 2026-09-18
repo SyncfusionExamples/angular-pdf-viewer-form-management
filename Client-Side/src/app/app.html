@@ -26,6 +26,9 @@
         <button id="importField" type="button" (click)="importFromObject()">
           Import form values
         </button>
+        <button id="extractBarcode" type="button" (click)="extractBarcodes()">
+          Barcode Extraction
+        </button>
       </div>
     </div>
 
@@ -34,6 +37,31 @@
       <ejs-pdfviewer #pdfviewer id="pdfViewer" [documentPath]="document" [toolbarSettings]="toolbarSettings"
         [resourceUrl]="resource" (formFieldPropertiesChange)="formFieldPropertiesChange($event)"
         style="height:640px;display:block"></ejs-pdfviewer>
+    </div>
+  </div>
+</div>
+
+<div class="loading-backdrop" *ngIf="isBarcodeLoading">
+  <div class="loading-card" role="status" aria-live="polite" aria-label="Loading barcode extraction">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="loading-text">Extracting barcode JSON...</div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" *ngIf="showBarcodeDialog">
+  <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="barcodeDialogTitle">
+    <div class="dialog-header">
+      <h3 id="barcodeDialogTitle">JSON</h3>
+      <button type="button" class="icon-button" (click)="copyBarcodeJson()" title="Copy JSON">Copy</button>
+      <button type="button" class="icon-button close-button" (click)="closeBarcodeDialog()" title="Close">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <pre class="json-preview">{{ barcodeDialogJson }}</pre>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" class="primary-button" (click)="closeBarcodeDialog()">OK</button>
     </div>
   </div>
 </div>
