@@ -1,4 +1,5 @@
-import { Component, ViewEncapsulation, OnInit, ViewChild } from '@angular/core';
+import { Component, ViewEncapsulation, OnInit, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import {
   PdfViewerComponent,
   LinkAnnotationService,
@@ -44,15 +45,20 @@ import { PdfDocument, PdfField, PdfTextBoxField } from '@syncfusion/ej2-pdf';
   ],
   styleUrls: ['app.css'],
   standalone: true,
-  imports: [PdfViewerModule],
+  imports: [CommonModule, PdfViewerModule],
 })
 export class App {
   @ViewChild('pdfviewer')
   public pdfviewerControl?: PdfViewerComponent;
 
-  public document: string = window.location.origin + '/pdf-succinctly.pdf';
+  constructor(private readonly changeDetectorRef: ChangeDetectorRef) {}
+
+  public document: string = window.location.origin + '/Input.pdf';
   public resource: string = window.location.origin + '/ej2-pdfviewer-lib';
   public exportedData: any;
+  public showBarcodeDialog = false;
+  public isBarcodeLoading = false;
+  public barcodeDialogJson = '';
   public toolbarSettings = {
     showTooltip: true,
     toolbarItems: [
@@ -242,6 +248,82 @@ export class App {
   importFromObject(): void {
     if (!this.pdfviewerControl) return;
     this.pdfviewerControl.importFormFields(this.exportedData, FormFieldDataFormat.Json);
+  }
+
+  /** Sends the currently loaded PDF to the server and shows the Barcode JSON in a popup dialog. */
+  async extractBarcodes(): Promise<void> {
+    if (!this.pdfviewerControl) return;
+
+    this.showBarcodeDialog = false;
+    this.isBarcodeLoading = true;
+    this.lockBackgroundInteraction(true);
+
+    try {
+      const blob: Blob = await this.pdfviewerControl.saveAsBlob();
+      const data: string = await this.blobToBase64(blob);
+
+      const response = await fetch('https://localhost:7255/pdfviewer/ExtractBarcodes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ data }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      this.barcodeDialogJson = JSON.stringify(result, null, 2);
+      this.showBarcodeDialog = true;
+      this.lockBackgroundInteraction(true);
+      setTimeout(() => {
+        this.isBarcodeLoading = false;
+        this.changeDetectorRef.detectChanges();
+      });
+    } catch (error) {
+      console.error('Error extracting barcodes:', error);
+      this.isBarcodeLoading = false;
+      this.lockBackgroundInteraction(false);
+    }
+  }
+
+  private lockBackgroundInteraction(lock: boolean): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.body.style.overflow = lock ? 'hidden' : '';
+  }
+
+  private downloadBarcodeJson(): void {
+    if (!this.barcodeDialogJson) {
+      return;
+    }
+
+    const fileBlob = new Blob([this.barcodeDialogJson], { type: 'application/json' });
+    const url = window.URL.createObjectURL(fileBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Output.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  closeBarcodeDialog(): void {
+    this.showBarcodeDialog = false;
+    this.lockBackgroundInteraction(false);
+    this.downloadBarcodeJson();
+  }
+
+  copyBarcodeJson(): void {
+    navigator.clipboard.writeText(this.barcodeDialogJson).catch((error) => {
+      console.error('Copy failed:', error);
+    });
   }
 } /* ------------------ Constants ------------------ */
 
