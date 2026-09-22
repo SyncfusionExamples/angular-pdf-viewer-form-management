@@ -157,7 +157,7 @@ export class App {
     for (let i = 0; i < formFields.length; i++) {
       const field = formFields[i];
 
-      if (field && field.type === 'SignatureField' && field.name) {
+      if (field && (field.type === 'SignatureField' || field.type === 'InitialField') && field.name) {
         const fieldRole = this.roleSignatureFieldMap.get(field.name);
         let visibility;
         if (fieldRole) {
@@ -227,7 +227,7 @@ export class App {
     for (let i = 0; i < formFields.length; i++) {
       const field: any = formFields[i];
 
-      if (field && field.type === 'SignatureField') {
+      if (field && (field.type === 'SignatureField' || field.type === 'InitialField')) {
         const bounds: any = field.bounds;
         const pageNumber = field.pageIndex + 1; // PDF Viewer pages are usually 1-based
 
@@ -316,7 +316,7 @@ export class App {
     for (let i = 0; i < formFields.length; i++) {
       const field = formFields[i];
 
-      if (field && field.type === 'SignatureField' && field.name) {
+      if (field && (field.type === 'SignatureField' || field.type === 'InitialField') && field.name) {
         // Check if this field is already mapped
         const existingRole = this.roleSignatureFieldMap.get(field.name);
 
@@ -348,7 +348,7 @@ export class App {
     for (let i = 0; i < formFields.length; i++) {
       const field = formFields[i];
 
-      if (field && field.type === 'SignatureField' && field.name) {
+      if (field && (field.type === 'SignatureField' || field.type === 'InitialField') && field.name) {
         const fieldRole = this.roleSignatureFieldMap.get(field.name);
         let visibility;
         if (fieldRole) {
@@ -414,7 +414,7 @@ export class App {
         for (let i = 0; i < formFields.length; i++) {
           const field = formFields[i];
 
-          if (field && field.type === 'SignatureField' && field.name) {
+          if (field && (field.type === 'SignatureField' || field.type === 'InitialField') && field.name) {
             const fieldRole = this.roleSignatureFieldMap.get(field.name);
 
             // Allow fill only if:
