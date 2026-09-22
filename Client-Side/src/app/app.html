@@ -9,6 +9,19 @@
     <!-- Controls Panel -->
     <div class="controls-panel">
       <h2>Document Operations</h2>
+      
+      <!-- Role Selector -->
+      <div class="role-selector-buttons">
+        <span class="role-label">Select Role:</span>
+        <button [class.active]="currentRole === 'nurse'" (click)="setCurrentRole('nurse')" class="role-btn nurse-btn">
+          Nurse
+        </button>
+        <button [class.active]="currentRole === 'doctor'" (click)="setCurrentRole('doctor')" class="role-btn doctor-btn">
+          Doctor
+        </button>
+        <span class="current-role-display">Current: <strong>{{ currentRole | uppercase }}</strong></span>
+      </div>
+
       <div class="button-group">
         <button (click)="updateSignatureField()">Fill Signature Field</button>
         <button id="searchTextRedact" type="button" (click)="markForRedaction()">
@@ -36,7 +49,8 @@
     <div class="viewer-container">
       <ejs-pdfviewer #pdfviewer id="pdfViewer" [documentPath]="document" [toolbarSettings]="toolbarSettings"
         [resourceUrl]="resource" (formFieldPropertiesChange)="formFieldPropertiesChange($event)"
-        style="height:640px;display:block"></ejs-pdfviewer>
+        (formFieldAdd)="onAddSignature($event)"
+        style="height:640px;display:block" [tileRenderingSettings]='tileRendering'></ejs-pdfviewer>
     </div>
   </div>
 </div>

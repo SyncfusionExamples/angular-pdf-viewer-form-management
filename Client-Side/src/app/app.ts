@@ -59,6 +59,15 @@ export class App {
   public showBarcodeDialog = false;
   public isBarcodeLoading = false;
   public barcodeDialogJson = '';
+  
+  // Role-based signature storage
+  public currentRole: string = 'nurse'; // 'nurse' or 'doctor'
+  public nurseSignature: string = ''; // Stores nurse signature
+  public doctorSignature: string = ''; // Stores doctor signature
+  public roleSignatureFieldMap: Map<string, string> = new Map(); // Maps signature field names to roles
+  public tileRendering = {
+    enableTileRendering: false,
+  };
   public toolbarSettings = {
     showTooltip: true,
     toolbarItems: [
@@ -107,6 +116,67 @@ export class App {
   };
   ngOnInit(): void {
     // ngOnInit function
+  }
+
+  /**
+   * Set the current role (nurse or doctor)
+   * When switching roles, automatically enforces field locking:
+   * - Fields belonging to other roles become read-only
+   * - Fields belonging to current role become editable
+   * @param role 'nurse' or 'doctor'
+   */
+  public setCurrentRole(role: string): void {
+    this.currentRole = role;
+    console.log(`Current role set to: ${role}`);
+    
+    // Enforce field locking based on role ownership
+    this.enforceRoleBasedFieldLocking();
+  }
+
+  /**
+   * Get the current role
+   */
+  public getCurrentRole(): string {
+    return this.currentRole;
+  }
+
+  /**
+   * Enforces role-based field locking
+   * - Locks fields that belong to other roles
+   * - Unlocks fields that belong to current role
+   */
+  private enforceRoleBasedFieldLocking(): void {
+    if (!this.pdfviewerControl) return;
+
+    const formFields = this.pdfviewerControl.formFieldCollections;
+    if (!formFields || formFields.length === 0) {
+      console.log('No form fields to lock/unlock');
+      return;
+    }
+
+    for (let i = 0; i < formFields.length; i++) {
+      const field = formFields[i];
+
+      if (field && field.type === 'SignatureField' && field.name) {
+        const fieldRole = this.roleSignatureFieldMap.get(field.name);
+        let visibility;
+        if (fieldRole) {
+          // Field has role ownership
+          if (fieldRole === this.currentRole) {
+            // Field belongs to current role - make it editable
+            visibility = 'visible';
+            console.log(`✓ Field "${field.name}" unlocked for ${this.currentRole}`);
+          } else {
+            // Field belongs to different role - make it read-only
+            visibility = 'hidden';
+            console.log(`✗ Field "${field.name}" locked (belongs to ${fieldRole})`);
+          }
+
+          // Update the field to apply the changes
+          this.pdfviewerControl.formDesignerModule.updateFormField(field, { visibility: visibility } as any);
+        }
+      }
+    }
   }
   blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -180,62 +250,368 @@ export class App {
     if (!this.pdfviewerControl) return;
     this.pdfviewerControl.annotation.redact();
   }
+  /**
+   * Handle form field property changes with role-based signature storage
+   * Validates role ownership before saving signature
+   * Stores signatures separately for nurse and doctor roles
+   */
   public formFieldPropertiesChange = (args: any): void => {
     const newValue: string | undefined = args?.newValue;
-    if (!newValue) {
+    const field: any = args?.field;
+
+    if (!newValue || !field || !field.name || args.isVisibilityChanged) {
       return;
     }
 
-    this.sendToServer(newValue);
+    const fieldRole = this.roleSignatureFieldMap.get(field.name);
+
+    // Validate: Allow edit only if field is unassigned or belongs to current role
+    if (fieldRole && fieldRole !== this.currentRole) {
+      console.error(`⚠️ Unauthorized: Cannot edit field "${field.name}" - owned by ${fieldRole}. Current role: ${this.currentRole}`);
+
+      this.pdfviewerControl?.updateFormFieldsValue(field);
+      return;
+    }
+
+    // Store signature based on current role
+    if (this.currentRole === 'nurse') {
+      this.nurseSignature = newValue;
+      console.log('✓ Nurse signature saved');
+    } else if (this.currentRole === 'doctor') {
+      this.doctorSignature = newValue;
+      console.log('✓ Doctor signature saved');
+    }
+
+    // Always map/update the signature field to the current role
+    this.roleSignatureFieldMap.set(field.name, this.currentRole);
+    console.log(`✓ Field "${field.name}" mapped to role: ${this.currentRole}`);
+    console.log(`✓ Current mappings:`, Array.from(this.roleSignatureFieldMap.entries()));
+
+    // Send to server - only pass role (not fieldName)
+    this.sendToServer(newValue, this.currentRole);
+
+    // Update the collection to enforce role-based read-only status
+    this.updateSignatureFieldsInCollection();
   };
 
+  /**
+   * Handle addSignature event - triggered when a signature is added to the PDF
+   * Updates the role-based field mapping and enforces read-only status for other roles
+   * @param args - AddSignatureEventArgs containing signature information
+   */
+  public onAddSignature = (args: any): void => {
+    console.log(`✓ Signature added event triggered`);
+    console.log(`✓ Signature details:`, args);
+
+    // Get all form fields to find the signature field
+    if (!this.pdfviewerControl) return;
+
+    const formFields = this.pdfviewerControl.formFieldCollections;
+    if (!formFields || formFields.length === 0) {
+      console.log('No form fields in collection');
+      return;
+    }
+
+    // Find signature fields and update the mapping
+    for (let i = 0; i < formFields.length; i++) {
+      const field = formFields[i];
+
+      if (field && field.type === 'SignatureField' && field.name) {
+        // Check if this field is already mapped
+        const existingRole = this.roleSignatureFieldMap.get(field.name);
+
+        if (!existingRole) {
+          // New signature field - map it to current role
+          this.roleSignatureFieldMap.set(field.name, this.currentRole);
+          console.log(`✓ New signature field "${field.name}" mapped to role: ${this.currentRole}`);
+        }
+      }
+    }
+
+    // Update all signature fields collection to enforce role-based read-only status
+    this.updateSignatureFieldsInCollection();
+  };
+
+  /**
+   * Updates the read-only status of all signature fields based on role mapping
+   * Prevents other roles from editing signatures that belong to different roles
+   */
+  private updateSignatureFieldsInCollection(): void {
+    if (!this.pdfviewerControl) return;
+
+    const formFields = this.pdfviewerControl.formFieldCollections;
+    if (!formFields || formFields.length === 0) {
+      return;
+    }
+
+    // Update all signature fields based on role mapping
+    for (let i = 0; i < formFields.length; i++) {
+      const field = formFields[i];
+
+      if (field && field.type === 'SignatureField' && field.name) {
+        const fieldRole = this.roleSignatureFieldMap.get(field.name);
+        let visibility;
+        if (fieldRole) {
+          // Field has role ownership
+          if (fieldRole === this.currentRole) {
+            // Field belongs to current role - make it editable
+            visibility = 'visible';
+            console.log(`✓ Field "${field.name}" unlocked for ${this.currentRole}`);
+          } else {
+            // Field belongs to different role - make it read-only
+            visibility = 'hidden';
+            console.log(`✗ Field "${field.name}" locked (belongs to ${fieldRole})`);
+          }
+
+          // Apply changes to PDF viewer
+          this.pdfviewerControl.formDesignerModule.updateFormField(field, { visibility: visibility} as any);
+        }
+      }
+    }
+
+    console.log(`✓ Collection updated. Field mappings:`, Array.from(this.roleSignatureFieldMap.entries()));
+  }
+
+  /**
+   * Fill signature field with the current role's saved signature
+   * Fetches the appropriate signature (nurse or doctor) from server
+   * and fills all signature fields assigned to the current role
+   */
   updateSignatureField(): void {
     fetch('https://localhost:7255/pdfviewer/GetSavedSignature', {
-      method: 'GET',
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
       },
+      body: JSON.stringify({ role: this.currentRole }),
     })
       .then((res) => {
         if (!res.ok) {
-          throw new Error('Failed to fetch signature');
+          throw new Error('Failed to fetch signature for role: ' + this.currentRole);
         }
         return res.json();
       })
       .then((data) => {
         if (!this.pdfviewerControl) return;
-        var formFields = this.pdfviewerControl.formFieldCollections;
+
+        const formFields = this.pdfviewerControl.formFieldCollections;
         if (!formFields || formFields.length === 0) {
           console.error('Form fields are not available in loaded PDF!');
           return;
         }
-        for (var i = 0; i < formFields.length; i++) {
-          var field = formFields[i];
 
-          if (field && field.type === 'SignatureField') {
-            field.value = data.data;
-            field.signatureType = [SignatureType.Image];
-            this.pdfviewerControl.updateFormFieldsValue(field);
+        // Store locally based on role
+        if (this.currentRole === 'nurse') {
+          this.nurseSignature = data.data;
+          console.log('✓ Nurse signature loaded from server');
+        } else if (this.currentRole === 'doctor') {
+          this.doctorSignature = data.data;
+          console.log('✓ Doctor signature loaded from server');
+        }
+
+        // Update only signature fields designated for the current role
+        for (let i = 0; i < formFields.length; i++) {
+          const field = formFields[i];
+
+          if (field && field.type === 'SignatureField' && field.name) {
+            const fieldRole = this.roleSignatureFieldMap.get(field.name);
+
+            // Allow fill only if:
+            // 1. Field has no role assigned (first time)
+            // 2. Field already belongs to current role
+            if (!fieldRole || fieldRole === this.currentRole) {
+              field.value = data.data;
+              field.signatureType = [SignatureType.Image];
+              this.roleSignatureFieldMap.set(field.name, this.currentRole);
+              this.pdfviewerControl.updateFormFieldsValue(field);
+              console.log(`✓ ${this.currentRole}'s signature filled in field: "${field.name}"`);
+            } else {
+              this.pdfviewerControl.updateFormFieldsValue(field);
+              console.log(`✗ Field "${field.name}" is read-only (belongs to ${fieldRole})`);
+            }
           }
         }
       })
       .catch((err) => {
-        console.error('Error fetching signature:', err);
+        console.error('✗ Error fetching signature:', err);
       });
   }
   /* ------------------ Server Call ------------------ */
 
-  public sendToServer = (base64Data: string): void => {
+  /**
+   * Convert signature data (JSON path format or SVG) to base64 PNG data URL
+   * Handles three formats:
+   * 1. JSON path array: [{"command":"M","x":202,"y":62}, {"command":"L","x":202,"y":62}, ...]
+   * 2. SVG string: "<svg>...</svg>"
+   * 3. Already base64: "data:image/png;base64,..."
+   * @param signatureData The signature data in any supported format
+   * @returns base64 data URL format: data:image/png;base64,...
+   */
+  private convertSvgToBase64(signatureData: string): string {
+    // Check if already in base64 format
+    if (signatureData.startsWith('data:')) {
+      console.log('✓ Data already in base64 format');
+      return signatureData;
+    }
+
+    // Check if it's JSON path format (starts with '[')
+    if (signatureData.startsWith('[')) {
+      console.log('✓ Converting JSON path format to PNG base64...');
+      try {
+        const paths = JSON.parse(signatureData) as Array<{ command: string; x: number; y: number }>;
+        
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          console.error('✗ Failed to get canvas context');
+          return signatureData;
+        }
+
+        // Calculate bounds to set canvas size
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        for (const path of paths) {
+          if (path.x !== undefined && path.y !== undefined) {
+            minX = Math.min(minX, path.x);
+            minY = Math.min(minY, path.y);
+            maxX = Math.max(maxX, path.x);
+            maxY = Math.max(maxY, path.y);
+          }
+        }
+
+        // Add padding
+        const padding = 10;
+        const width = maxX - minX + padding * 2;
+        const height = maxY - minY + padding * 2;
+
+        canvas.width = Math.max(width, 100);
+        canvas.height = Math.max(height, 100);
+
+        // Fill background with white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw signature strokes
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        let isDrawing = false;
+        for (const path of paths) {
+          const x = path.x - minX + padding;
+          const y = path.y - minY + padding;
+
+          if (path.command === 'M') {
+            // Move command - start new path
+            if (isDrawing) {
+              ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            isDrawing = true;
+          } else if (path.command === 'L') {
+            // Line command - draw to point
+            if (!isDrawing) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              isDrawing = true;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+        }
+
+        // Finish drawing
+        if (isDrawing) {
+          ctx.stroke();
+        }
+
+        // Convert to base64
+        const base64DataUrl = canvas.toDataURL('image/png');
+        console.log('✓ JSON path converted to PNG base64');
+        return base64DataUrl;
+      } catch (error) {
+        console.error('✗ Error parsing JSON path format:', error);
+        return signatureData;
+      }
+    }
+
+    // Check if it's SVG string format
+    if (signatureData.startsWith('<svg') || signatureData.includes('<svg')) {
+      console.log('✓ Converting SVG string to PNG base64...');
+      
+      // Create a canvas to convert SVG to PNG
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('✗ Failed to get canvas context');
+        return signatureData;
+      }
+
+      // Create SVG blob
+      const svgBlob = new Blob([signatureData], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(svgBlob);
+
+      // Create image from SVG
+      const img = new Image();
+      img.onload = () => {
+        // Set canvas size to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw image on canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Clean up
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+
+      // Return canvas as base64 data URL
+      const base64DataUrl = canvas.toDataURL('image/png');
+      console.log('✓ SVG string converted to PNG base64');
+      return base64DataUrl;
+    }
+
+    // If format not recognized, return as-is
+    console.warn('⚠️ Unknown signature data format, sending as-is');
+    return signatureData;
+  }
+
+  /**
+   * Send signature data to server with role information
+   * Converts SVG to base64 if needed, then saves the signature for the specified role
+   * @param signatureData The signature data (SVG string, base64, or data URL)
+   * @param role The role (nurse or doctor)
+   */
+  public sendToServer = (signatureData: string, role: string = ''): void => {
+    // Convert SVG to base64 if needed
+    const base64Data = this.convertSvgToBase64(signatureData);
+
+    const payload = {
+      data: base64Data,
+      role: role || this.currentRole,
+    };
+
     fetch('https://localhost:7255/pdfviewer/SaveSignAsImage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ data: base64Data }),
+      body: JSON.stringify(payload),
     })
-      .then((res) => res.text())
-      .then((response) => console.log('Server Response:', response))
-      .catch((error) => console.error('Error sending image:', error));
+      .then((res) => res.json())
+      .then((response) => {
+        console.log('✓ Signature saved successfully');
+        console.log(`✓ Server Response:`, response);
+        console.log(`✓ Signature for "${role || this.currentRole}" has been updated`);
+      })
+      .catch((error) => console.error('✗ Error saving signature:', error));
   };
 
   exportObj(): void {

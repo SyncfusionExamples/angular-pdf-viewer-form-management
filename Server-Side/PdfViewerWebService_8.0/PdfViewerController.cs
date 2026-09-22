@@ -33,6 +33,7 @@ namespace PdfViewerWebService_8
             try
             {
                 string? sign = jsonObject.ContainsKey("data") ? jsonObject["data"] : null;
+                string? role = jsonObject.ContainsKey("role") ? jsonObject["role"] : "nurse";
 
                 if (string.IsNullOrWhiteSpace(sign))
                     return BadRequest("No image data received.");
@@ -46,44 +47,70 @@ namespace PdfViewerWebService_8
                 if (!Directory.Exists(signDirectory))
                     Directory.CreateDirectory(signDirectory);
 
-                // Save JSON (optional)
-                string txtPath = Path.Combine(signDirectory, "sign.txt");
+                // Save signature with role-based naming only: sign_{role}.txt
+                // This replaces any existing signature for this role
+                string fileName = $"sign_{role}.txt";
+                string txtPath = Path.Combine(signDirectory, fileName);
                 System.IO.File.WriteAllText(txtPath, sign);
 
-                return Ok("Signature saved as text and image.");
+                // Also save metadata for tracking
+                string metadataFileName = $"sign_{role}_metadata.json";
+                string metadataPath = Path.Combine(signDirectory, metadataFileName);
+                var metadata = new
+                {
+                    role = role,
+                    savedAt = DateTime.UtcNow
+                };
+                System.IO.File.WriteAllText(metadataPath, JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true }));
+
+                return Ok(new { message = $"Signature for {role} updated successfully", role = role });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, "Error: " + ex.Message);
             }
         }
-        [HttpGet("GetSavedSignature")]
+        [HttpPost("GetSavedSignature")]
         [EnableCors("MyPolicy")]
         [Route("[controller]/GetSavedSignature")]
-        public IActionResult GetSavedSignature()
+        public IActionResult GetSavedSignature([FromBody] Dictionary<string, string> jsonObject)
         {
             try
             {
+                string? role = jsonObject.ContainsKey("role") ? jsonObject["role"] : "nurse";
+
                 string signDirectory = Path.Combine(
                     Directory.GetCurrentDirectory(),
                     "wwwroot",
                     "signatures"
                 );
 
-                string filePath = Path.Combine(signDirectory, "sign.txt");
+                // Get role-specific signature (sign_{role}.txt)
+                string fileName = $"sign_{role}.txt";
+                string filePath = Path.Combine(signDirectory, fileName);
 
+                // Fallback to legacy sign.txt if role-specific doesn't exist
                 if (!System.IO.File.Exists(filePath))
                 {
-                    return NotFound("Signature text file not found.");
+                    string legacyFilePath = Path.Combine(signDirectory, "sign.txt");
+                    if (System.IO.File.Exists(legacyFilePath))
+                    {
+                        filePath = legacyFilePath;
+                    }
+                    else
+                    {
+                        return NotFound($"Signature not found for role: {role}");
+                    }
                 }
 
-                // ✅ Read base64 (or full data URL) as text
+                // Read base64 (or full data URL) as text
                 string signText = System.IO.File.ReadAllText(filePath);
 
-            
                 return Ok(new
                 {
-                    data = signText
+                    data = signText,
+                    role = role,
+                    message = $"Signature loaded for {role}"
                 });
             }
             catch (Exception ex)
