@@ -51,7 +51,7 @@ export class App {
   @ViewChild('pdfviewer')
   public pdfviewerControl?: PdfViewerComponent;
 
-  constructor(private readonly changeDetectorRef: ChangeDetectorRef) {}
+  constructor(private readonly changeDetectorRef: ChangeDetectorRef) { }
 
   public document: string = window.location.origin + '/Input.pdf';
   public resource: string = window.location.origin + '/ej2-pdfviewer-lib';
@@ -59,7 +59,7 @@ export class App {
   public showBarcodeDialog = false;
   public isBarcodeLoading = false;
   public barcodeDialogJson = '';
-  
+
   // Role-based signature storage
   public currentRole: string = 'nurse'; // 'nurse' or 'doctor'
   public nurseSignature: string = ''; // Stores nurse signature
@@ -128,7 +128,7 @@ export class App {
   public setCurrentRole(role: string): void {
     this.currentRole = role;
     console.log(`Current role set to: ${role}`);
-    
+
     // Enforce field locking based on role ownership
     this.enforceRoleBasedFieldLocking();
   }
@@ -364,7 +364,7 @@ export class App {
           }
 
           // Apply changes to PDF viewer
-          this.pdfviewerControl.formDesignerModule.updateFormField(field, { visibility: visibility} as any);
+          this.pdfviewerControl.formDesignerModule.updateFormField(field, { visibility: visibility } as any);
         }
       }
     }
@@ -460,11 +460,11 @@ export class App {
       console.log('✓ Converting JSON path format to PNG base64...');
       try {
         const paths = JSON.parse(signatureData) as Array<{ command: string; x: number; y: number }>;
-        
+
         // Create canvas
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         if (!ctx) {
           console.error('✗ Failed to get canvas context');
           return signatureData;
@@ -472,7 +472,7 @@ export class App {
 
         // Calculate bounds to set canvas size
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        
+
         for (const path of paths) {
           if (path.x !== undefined && path.y !== undefined) {
             minX = Math.min(minX, path.x);
@@ -543,11 +543,11 @@ export class App {
     // Check if it's SVG string format
     if (signatureData.startsWith('<svg') || signatureData.includes('<svg')) {
       console.log('✓ Converting SVG string to PNG base64...');
-      
+
       // Create a canvas to convert SVG to PNG
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
+
       if (!ctx) {
         console.error('✗ Failed to get canvas context');
         return signatureData;
@@ -563,10 +563,10 @@ export class App {
         // Set canvas size to match image
         canvas.width = img.width;
         canvas.height = img.height;
-        
+
         // Draw image on canvas
         ctx.drawImage(img, 0, 0);
-        
+
         // Clean up
         URL.revokeObjectURL(url);
       };
@@ -673,7 +673,18 @@ export class App {
 
     document.body.style.overflow = lock ? 'hidden' : '';
   }
+  public getSignatureAndInitialFields(): void {
+    const signatureFields = this.pdfviewerControl?.formFieldCollections.filter(
+      (field: any) => field.type === 'SignatureField'
+    );
 
+    const initialFields = this.pdfviewerControl?.formFieldCollections.filter(
+      (field: any) => field.type === 'InitialField'
+    );
+
+    console.log('Signature Fields:', signatureFields);
+    console.log('Initial Fields:', initialFields);
+  }
   private downloadBarcodeJson(): void {
     if (!this.barcodeDialogJson) {
       return;
