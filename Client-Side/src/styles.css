@@ -161,6 +161,17 @@ button:first-child:hover {
     background: #0e7490;
 }
 
+/* Get Signature and Initial Fields - Rose/Crimson */
+#getSignatureAndInitialFields {
+    background: #e11d48;
+    color: white;
+    border-color: #be123c;
+}
+
+#getSignatureAndInitialFields:hover {
+    background: #be123c;
+}
+
 /* PDF Viewer container */
 .viewer-container {
     flex: 1;
